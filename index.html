@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menanam di Desa - 3D RPG Edition</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <canvas id="game-canvas"></canvas>
+
+    <div id="ui">
+        <div id="crosshair"></div>
+        <div id="interaction-feedback">✦ INTERAKSI</div>
+        <div id="notification"></div>
+        
+        <div id="time-display" class="hud-panel">
+            <div>📅 HARI <span id="day-count" onclick="openTodayDateInfo()" title="Klik untuk melihat informasi tanggal">1</span></div>
+            <div style="font-size: 20px; color: #fff;" id="clock-count">06:00</div>
+        </div>
+        <button id="calendar-btn" onclick="toggleCalendar()">📖 KALENDER <small>(C)</small></button>
+        <button id="relationship-btn" onclick="toggleRelationships()">💗 HUBUNGAN <small>(R)</small></button>
+        <button id="hud-toggle-btn" onclick="toggleHudPanels()">👁 HUD <small>(H)</small></button>
+        <div id="audio-controls" aria-label="Kontrol suara">
+            <button id="audio-toggle-btn" onclick="toggleAmbience()" title="Matikan atau nyalakan ambience">🔊</button>
+            <input id="audio-volume" type="range" min="0" max="1" step="0.05" value="0.35" aria-label="Volume ambience" oninput="setAmbienceVolume(this.value)">
+        </div>
+
+        <div id="stats" class="hud-panel">
+            <div class="stat-item"><span style="color:#f1c40f;">⭐ Level:</span> <b id="lvl-count">1</b></div>
+            <div class="stat-item" style="flex-direction:column; align-items:flex-start;">
+                <div style="width:100%; display:flex; justify-content:space-between;">
+                    <span>✨ EXP:</span> <span><span id="exp-count">0</span>/<span id="exp-next">50</span></span>
+                </div>
+                <div class="bar-bg"><div class="exp-bar-fill" id="exp-fill"></div></div>
+            </div>
+            <hr style="border-color:#333; margin: 6px 0; width: 100%;">
+            <div class="stat-item">❤️ HP: <span><b id="hp-count" style="color: #ff4757;">100</b> / <span id="maxhp-count">100</span></span></div>
+            <div class="stat-item" style="flex-direction:column; align-items:flex-start;">
+                <div style="width:100%; display:flex; justify-content:space-between;">
+                    <span>⚡ Stamina:</span> <span><span id="stamina-count">100</span>/<span id="maxstamina-count">100</span></span>
+                </div>
+                <div class="bar-bg"><div class="stamina-bar-fill" id="stamina-fill"></div></div>
+            </div>
+            <div class="stat-item" style="margin-top: 4px;">💰 Gold: <b id="gold-count" style="color: #ffd700;">100</b></div>
+            <div class="stat-item">🍎 Buah Ajaib: <b id="magic-fruit-count">0/4</b></div>
+            <hr style="border-color:#333; margin: 6px 0; width: 100%;">
+            <div class="stat-item">🌲 Kayu: <b id="wood-count">0</b> <span>| 🪨 Batu: <b id="stone-count">0</b></span></div>
+            <div class="stat-item">🟠 Tembaga: <b id="copper-count">0</b> <span>| ⚪ Silver: <b id="silver-count">0</b></span></div>
+            <div class="stat-item">🟡 Emas: <b id="ore-gold-count">0</b> <span>| 💎 Diamond: <b id="diamond-count">0</b></span></div>
+            <div class="stat-item">🌽 Jagung: <b id="crop-count">0</b> <span>| 🪱 Umpan: <b id="bait-count">0</b></span></div>
+            <div class="stat-item">🐟 Mujair: <b id="fish-mujair-count">0</b> <span>| 🐟 Lele: <b id="fish-lele-count">0</b></span></div>
+            <div class="stat-item">🐟 Emas: <b id="fish-emas-count">0</b> <span>| 🐟 Toman: <b id="fish-toman-count">0</b></span></div>
+            <div class="stat-item">🌾 Pakan Ternak: <b id="fodder-count">0</b> <span>| 🏰 Silo: <b id="silo-count">0</b>/<b id="silo-max">0</b></span></div>
+            <div class="stat-item">🥛 Susu: <b id="milk-count">0</b> <span>| 🍳 Telur: <b id="egg-count">0</b> <span>| 🧶 Wol: <b id="wool-count">0</b></span></div>
+        </div>
+
+        <div id="quest-tracker" class="hud-panel">
+            <h3>📜 JURNAL MISI <span style="font-size: 10px; color:#888;">[Q]</span></h3>
+            <div id="quest-title">Mengunjungi Walidesa</div>
+            <div id="quest-desc">Bicara dengan Walidesa untuk mengetahui keadaan desa saat ini.</div>
+            <div id="quest-progress">Status: Bicara ke Walidesa</div>
+        </div>
+
+        <div id="prompt">Tekan [E] untuk Interaksi</div>
+
+        <div id="inventory-container" class="hud-panel">
+            <div class="inv-group" data-category="Alat Kerja">
+                <div class="inv-slot active" id="slot-1" onclick="setSlot(1)">
+                    <span class="slot-key">1</span><span class="slot-icon">🪓</span>Kapak
+                </div>
+                <div class="inv-slot" id="slot-2" onclick="setSlot(2)">
+                    <span class="slot-key">2</span><span class="slot-icon">⛏️</span>Beliung
+                </div>
+                <div class="inv-slot" id="slot-3" onclick="setSlot(3)">
+                    <span class="slot-key">3</span><span class="slot-icon">🎣</span>Pancing
+                </div>
+                <div class="inv-slot" id="slot-9" onclick="setSlot(9)">
+                    <span class="slot-key">9</span><span class="slot-icon">🚜</span>Cangkul
+                </div>
+            </div>
+
+            <div class="inv-group" data-category="Bertani">
+                <div class="inv-slot" id="slot-4" onclick="setSlot(4)">
+                    <span class="slot-key">4</span><span class="slot-icon">🌱</span>B. Jagung (<b id="seed-count">0</b>)
+                </div>
+                <div class="inv-slot" id="slot-8" onclick="setSlot(8)">
+                    <span class="slot-key">8</span><span class="slot-icon">🌾</span>B. Pakan (<b id="fodder-seed-count">0</b>)
+                </div>
+                <div class="inv-slot" id="slot-5" onclick="setSlot(5)">
+                    <span class="slot-key">5</span><span class="slot-icon">💧</span>Penyiram
+                </div>
+            </div>
+
+            <div class="inv-group" data-category="Tempur">
+                <div class="inv-slot" id="slot-6" onclick="setSlot(6)">
+                    <span class="slot-key">6</span><span class="slot-icon">⚔️</span>Pedang
+                </div>
+            </div>
+
+            <div class="inv-group" data-category="Perbekalan">
+                <div class="inv-slot" id="slot-7" onclick="usePotion()">
+                    <span class="slot-key">7</span><span class="slot-icon">🧪</span>Potion (<b id="potion-count">0</b>)
+                </div>
+            </div>
+        </div>
+
+        <!-- Kalender & Event Desa -->
+        <div id="calendar-modal" class="modal-box" style="display:none; text-align:left; border-color:#f1c40f; z-index:850; width:520px;">
+            <h2 style="color:#f1c40f;">📅 KALENDER DESA SENJA</h2>
+            <div id="calendar-season" style="text-align:center;color:#9bd6ff;margin-bottom:8px;"></div>
+            <div id="calendar-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;"></div>
+            <div id="event-info" style="margin-top:12px;padding:10px;background:rgba(255,255,255,.06);border-radius:8px;"></div>
+            <button class="btn-action" style="background:#e67e22;margin-top:10px;" onclick="toggleCalendar()">Tutup</button>
+        </div>
+
+
+        <!-- Modal Hadiah Warga -->
+        <div id="gift-modal" class="modal-box" style="display:none; text-align:left; border-color:#9b59b6; z-index:900; width:430px;">
+            <h2 style="color:#d8a7ff;">🎁 BERIKAN HADIAH</h2>
+            <div class="dialogue-text" id="gift-recipient"></div>
+            <div id="gift-content"></div>
+            <button class="btn-action" style="background:#7f8c8d;" onclick="closeModal()">Tutup</button>
+        </div>
+
+        <div id="relationship-modal" class="modal-box" style="display:none; text-align:left; border-color:#e84393; z-index:880; width:500px;">
+            <h2 style="color:#ff9ff3;">💗 HUBUNGAN WARGA</h2>
+            <div class="dialogue-text" style="border-left-color:#e84393;">Pantau kedekatanmu dengan seluruh warga desa. Beri hadiah yang mereka sukai untuk mempercepat hubungan.</div>
+            <div id="relationship-content"></div>
+            <button class="btn-action" style="background:#7f8c8d;" onclick="closeModal()">Tutup</button>
+        </div>
+
+        <!-- Menu Utama (Start Menu) -->
+        <div id="main-menu" class="modal-box" style="display: block; text-align: center; border-color: #2ecc71; z-index: 1000; width: 420px;">
+            <h1 style="color: #2ecc71; margin-top: 0; font-size: 28px;">MENANAM DI DESA</h1>
+            <p style="color: #aaa; font-size: 13px; margin-bottom: 20px;">Jelajahi desa, bercocok tanam, beternak, dan bantu warga!</p>
+            
+            <button class="btn-action" style="background: #2ecc71; font-size: 16px; padding: 12px; margin-bottom: 10px;" onclick="showProlog()">▶️ MAIN BARU</button>
+            <button class="btn-action" style="background: #f1c40f; color: #000; font-size: 15px; padding: 10px; margin-bottom: 10px;" onclick="loadGame()">📂 MUAT GAME (LOAD)</button>
+            <button class="btn-action" style="background: #3498db; font-size: 14px; padding: 10px; margin-bottom: 10px;" onclick="showGuide()">📖 PETUNJUK KONTROL</button>
+        </div>
+
+        <!-- Modal Prolog / Cerita Pembuka -->
+        <div id="prolog-modal" class="modal-box" style="display: none; text-align: left; border-color: #8b5a2b; z-index: 1000; width: 480px;">
+            <h2 style="color: #f1c40f; margin-top: 0; text-align: center; letter-spacing: 1px;">🏙️ DARI PUING KESUKSESAN</h2>
+            <div class="dialogue-text" style="border-left-color: #8b5a2b; font-size: 12.5px; line-height: 1.7;">
+                Tiga tahun lalu, namamu terpampang di gedung pencakar langit ibu kota. <b>Brand</b> yang kau bangun dari nol jadi kebanggaan — diliput majalah bisnis, dipuji, ditiru. Kau adalah bukti bahwa kerja keras membuahkan hasil.
+                <br><br>
+                Tapi kesuksesan itu rapuh. Krisis pasar, keputusan investasi yang meleset, dan mitra yang menghilang saat keadaan memburuk — satu per satu meruntuhkan apa yang kau bangun bertahun-tahun. Perusahaan bangkrut. Hutang menumpuk melebihi apa yang bisa kau bayar.
+                <br><br>
+                Kantor, mobil, rumah, bahkan jam tangan pemberian ayahmu — semua terpaksa dijual demi melunasi sisa kewajiban. Yang tersisa hanya sedikit uang tunai, dan satu hal yang tak pernah kau pedulikan sebelumnya: sepetak lahan warisan orang tua di sebuah desa kecil, lengkap dengan peternakan tua yang lama terbengkalai.
+                <br><br>
+                Hari ini, dengan tas berisi sisa harta dan kebanggaan yang tinggal nama, kau turun dari kendaraan umum terakhir di gerbang desa. Tak ada lagi gedung tinggi, tak ada lagi sorot lampu kota. Hanya hamparan sawah, suara angin, dan sebuah peternakan yang menunggu untuk dihidupkan kembali.
+                <br><br>
+                <span style="color:#2ecc71; font-weight:bold;">Bukan akhir. Ini permulaan yang baru — dari desa ini, kau akan membangun semuanya dari awal.</span>
+            </div>
+            <button class="btn-action" style="background: #2ecc71;" onclick="beginJourney()">🌱 Mulai Hidup Baru</button>
+            <button class="btn-action" style="background: #7f8c8d;" onclick="closeProlog()">⬅️ Kembali</button>
+        </div>
+
+        <!-- Menu Pause Game -->
+        <div id="pause-modal">
+            <h2 style="color: #f1c40f; margin-top: 0;">⏸️ GAME PAUSED</h2>
+            <p style="font-size: 13px; color: #ccc; margin-bottom: 20px;">Permainan dihentikan sementara.</p>
+            <button class="btn-action" style="background:#2ecc71; margin-bottom: 8px;" onclick="togglePause()">▶️ Lanjutkan Game</button>
+            <button class="btn-action" style="background:#e67e22; margin-bottom: 8px;" onclick="saveGame()">💾 Simpan Progress (Save)</button>
+            <button class="btn-action" style="background:#e74c3c;" onclick="location.reload()">🚪 Keluar ke Menu Awal</button>
+        </div>
+
+        <!-- Modal NPC Walidesa -->
+        <div id="dialogue-walidesa" class="modal-box">
+            <h2>👨‍🌾 WALIDESA / PEDAGANG</h2>
+            <div class="dialogue-text" id="talk-walidesa">"Selamat datang!"</div>
+            <button class="btn-action" id="btn-quest-walidesa" style="background:#3498db; display:none;" onclick="progressStory('walidesa')">📜 Tanggapi Quest</button>
+            <button class="btn-action" style="background:#e67e22;" onclick="openShop('walidesa')">🏪 Toko Hasil Bumi</button>
+            <button class="btn-action" style="background:#7f8c8d;" onclick="closeModal()">Tutup (ESC)</button>
+        </div>
+
+        <!-- Modal NPC Pak Mamat -->
+        <div id="dialogue-mamat" class="modal-box">
+            <h2>🐮 PAK MAMAT (PETERNAK)</h2>
+            <div class="dialogue-text" id="talk-mamat">"Halo nak! Bangun kandang & silo dulu kalau mau pelihara dan beri makan hewan ternakmu secara teratur."</div>
+            <button class="btn-action" style="background:#d35400;" onclick="openShop('mamat_coop')">🏠 Bangun Kandang & Silo</button>
+            <button class="btn-action" style="background:#27ae60;" onclick="openShop('mamat_livestock')">🐮 Beli Hewan Ternak</button>
+            <button class="btn-action" style="background:#2980b9;" onclick="openShop('mamat_shop')">🥛 Kedai Peternakan & Pakan</button>
+            <button class="btn-action" style="background:#7f8c8d;" onclick="closeModal()">Tutup (ESC)</button>
+        </div>
+
+        <!-- Modal NPC Neng Siti -->
+        <div id="dialogue-siti" class="modal-box">
+            <h2>🛠️ NENG SITI (PANDAI BESI)</h2>
+            <div class="dialogue-text" id="talk-siti">"Bawakan aku batu dan kayu, nanti kubuatkan alat kerja yang lebih tajam!"</div>
+            <button class="btn-action" style="background:#8e44ad;" onclick="openShop('siti')">🔨 Bengkel Pandai Besi</button>
+            <button class="btn-action" style="background:#7f8c8d;" onclick="closeModal()">Tutup (ESC)</button>
+        </div>
+
+        <!-- Modal NPC Mang Dudung (Nelayan) -->
+        <div id="dialogue-dudung" class="modal-box">
+            <h2>🎣 MANG DUDUNG (NELAYAN)</h2>
+            <div class="dialogue-text" id="talk-dudung">"Halo nak! Sungai di desa kita penuh dengan ikan segar. Beli alat pancing dan umpan dulu kalau mau memancing di sini!"</div>
+            <button class="btn-action" style="background:#3498db;" onclick="openShop('dudung')">🎣 Toko Pancing & Jual Ikan</button>
+            <button class="btn-action" style="background:#7f8c8d;" onclick="closeModal()">Tutup (ESC)</button>
+        </div>
+
+        <!-- Modal NPC Paman Jaja (NPC Berjalan) -->
+        <div id="dialogue-jaja" class="modal-box">
+            <h2>🚶 PAMAN JAJA (PETANI WARGA)</h2>
+            <div class="dialogue-text" id="talk-jaja">"Halo anak muda! Saya sedang jalan-jalan keliling desa memeriksa tanaman dan ternak warga."</div>
+            <button class="btn-action" style="background:#7f8c8d;" onclick="closeModal()">Tutup (ESC)</button>
+        </div>
+
+        <!-- Sub-Toko Modal Umum -->
+        <div id="subshop-modal" class="modal-box">
+            <h2 id="shop-title">TOKO</h2>
+            <div id="shop-content"></div>
+            <button class="btn-action" style="background:#7f8c8d; margin-top: 15px;" onclick="closeModal()">Tutup</button>
+        </div>
+
+        <div id="game-over-modal" class="modal-box" style="text-align: center; border-color: #e74c3c; z-index: 500;">
+            <h1 style="color: #e74c3c; margin-top: 0;">GAME OVER</h1>
+            <p style="color: #ccc;">Kamu telah pingsan karena kehabisan HP!</p>
+            <button class="btn-action" style="background: #e74c3c;" onclick="respawnPlayer()">🔄 Bangkit Kembali (Respawn)</button>
+        </div>
+
+        <!-- Modal TAMAT / Ending Game -->
+        <div id="ending-modal" class="modal-box" style="display:none; text-align:center; border-color:#ffd700; z-index:600; width:460px;">
+            <h1 style="color:#ffd700; margin-top:0;">🏆 TAMAT</h1>
+            <p style="color:#2ecc71; font-weight:bold; font-size:14px; margin-top:-8px;">Dari Kebangkrutan di Kota, Menuju Peternakan yang Sukses</p>
+            <div class="dialogue-text" style="border-left-color:#ffd700; text-align:left; font-size:12.5px; line-height:1.7;">
+                Bertahun-tahun lalu, kau tiba di desa ini dengan tangan hampir kosong — sisa dari kejatuhan bisnis yang dulu kau banggakan. Kini, peternakan warisan orang tuamu berdiri kokoh dan dikenal seantero desa.
+                <br><br>
+                Kandang riuh oleh suara ternak yang sehat, gudang penuh hasil panen. Kisah kebangkrutanmu di kota kini menjadi kisah kebangkitan di desa.
+                <br><br>
+                📅 Hari ke: <b id="ending-day">-</b> &nbsp;|&nbsp; ⭐ Level: <b id="ending-level">-</b><br>
+                🐄 Total Hewan Ternak: <b id="ending-animals">-</b> &nbsp;|&nbsp; 📦 Total Hasil Dipanen: <b id="ending-produce">-</b>
+            </div>
+            <button class="btn-action" style="background:#2ecc71;" onclick="continueAfterEnding()">🌾 Lanjut Bermain Bebas</button>
+        </div>
+
+        <!-- Modal Tutorial Dalam Game -->
+        <div id="tutorial-modal" class="modal-box" style="display:none; text-align:left; border-color:#4CAF50; z-index:900; width:460px;">
+            <h2 id="tutorial-title" style="color:#4CAF50; margin-top:0; text-align:center;">🎓 TUTORIAL</h2>
+            <div class="dialogue-text" id="tutorial-desc" style="border-left-color:#4CAF50; font-size:13px; line-height:1.6;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                <span style="font-size:11px; color:#888;" id="tutorial-progress">1/8</span>
+                <div>
+                    <button class="btn-action" style="background:#7f8c8d; width:auto; padding:8px 14px; display:inline-block; margin-right:6px;" onclick="skipTutorial()">Lewati</button>
+                    <button class="btn-action" style="background:#2ecc71; width:auto; padding:8px 14px; display:inline-block;" onclick="nextTutorialStep()" id="tutorial-next-btn">Lanjut ▶️</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="instructions">
+            <h1 style="color: #4CAF50; margin-top:0;">KONTROL PERMAINAN</h1>
+            <p style="font-size: 13px; line-height: 1.6; color: #ccc;">
+                <b>W, A, S, D</b> : Bergerak | <b>SPASI</b> : Melompat<br>
+                <b>P / ESC</b> : Pause Game | <b>Q</b> : Misi | <b>H</b> : Tampilkan HUD<br>
+                <b>C</b> : Kalender | <b>R</b> : Hubungan Warga<br>
+                <b>1</b> : Kapak | <b>2</b> : Beliung | <b>3</b> : Pancing | <b>9</b> : Cangkul<br>
+                <b>4</b> : Benih Jagung | <b>8</b> : Benih Pakan | <b>5</b> : Penyiram<br>
+                <b>6</b> : Pedang | <b>7</b> : Potion<br>
+                <b>KLIK KIRI</b> : Gunakan Alat / Serang / Memancing<br>
+                <b>TEKAN E</b> : Interaksi NPC, Rumah, Silo, Pemandian Air Panas, Tempat Pakan, & Hewan<br><br>
+                ⛏️ <b>Tambang:</b> Gunakan Beliung (slot 2) pada batu mineral di wilayah tambang untuk mendapatkan Tembaga, Silver, Emas, dan Diamond. Bawa mineral ke bengkel untuk upgrade alat.<br><br>
+                🪨 <b>Lantai Tambang:</b> Pecahkan batu kunci untuk menemukan tangga. Lift menyimpan checkpoint setiap 5 lantai. Lantai 1–10 berisi Tembaga, 11–20 Silver, 21–30 Emas, dan 31–50 Diamond.<br><br>
+                🕳️ <b>Dungeon Senja:</b> Temukan gerbang dungeon di wilayah timur desa, kalahkan monster tiap lantai, dan ambil reward setelah mengalahkan bos!<br><br>
+                🚜 <b>Ingat:</b> Lahan harus dicangkul (slot 9) dulu sebelum bisa ditanami benih!
+            </p>
+            <button class="btn-action" style="background: #3498db; margin-top: 6px;" onclick="startTutorial()">🎓 Buka Tutorial Lengkap</button>
+            <button class="btn-action" style="background: #e74c3c; margin-top: 8px;" onclick="backToMainMenu()">⬅️ KEMBALI KE MENU</button>
+        </div>
+    </div>
+
+<script src="script.js"></script>
+</body>
+</html>
